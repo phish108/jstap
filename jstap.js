@@ -739,7 +739,7 @@
     if (!w.jstap) {
         jstapTouches = new JstapTouches();
         // create a global touches object
-        w.jtap   = launchJstap;
+        w.jstap   = launchJstap;
     }
     if (!w.jester) {
         w.jester = launchJstap; // backward compatibility
