@@ -27,6 +27,7 @@
 
     var lastTouches = 0,
         monitoring = 0,
+        activeTouch = 0,
         lasttap = 0,
         lasttwintap = 0,
         anDroid = false;
@@ -228,48 +229,50 @@
     }
 
     function removeTouch(evt) {
-        var i, j, id;
+        if (!activeTouch) {
+            var i, j, id;
 
-        var newStart = [],
-            newTotal = [],
-            newPrev = [],
-            newDelta = [];
+            var newStart = [],
+                newTotal = [],
+                newPrev = [],
+                newDelta = [];
 
-        // remove extra touches from startTouches
-        for (i = 0; i < evt.touches.length; i++) {
-            id = evt.touches[i].identifier;
-            for (j = 0; j < startTouches.length; j++) {
-                if (startTouches[j].identifier === id) { // found exisiting touch
-                    newStart.push(startTouches[j]);
-                    newTotal.push(totalTouches[j]);
-                    newPrev.push(prevTouches[j]);
-                    newDelta.push(deltaTouches[j]);
-                    break;
+            // remove extra touches from startTouches
+            for (i = 0; i < evt.touches.length; i++) {
+                id = evt.touches[i].identifier;
+                for (j = 0; j < startTouches.length; j++) {
+                    if (startTouches[j].identifier === id) { // found exisiting touch
+                        newStart.push(startTouches[j]);
+                        newTotal.push(totalTouches[j]);
+                        newPrev.push(prevTouches[j]);
+                        newDelta.push(deltaTouches[j]);
+                        break;
+                    }
                 }
             }
-        }
 
-        startTouches = newStart;
-        prevTouches  = newPrev;
-        totalTouches = newTotal;
-        deltaTouches = newDelta;
+            startTouches = newStart;
+            prevTouches  = newPrev;
+            totalTouches = newTotal;
+            deltaTouches = newDelta;
 
-        if (evt.touches.length) {
-            // recalculate start- and prevScale
-            startScale = sizeCalc(startTouches);
-            prevScale  = sizeCalc(prevTouches);
+            if (evt.touches.length) {
+                // recalculate start- and prevScale
+                startScale = sizeCalc(startTouches);
+                prevScale  = sizeCalc(prevTouches);
 
-            var ts = sizeCalc(evt.touches);
-            if (ts > 0) {
-                if (startScale > 0) {
-                    totalScale = ts / startScale;
-                }
-                if (prevScale > 0) {
-                    deltaScale = ts / prevScale;
+                var ts = sizeCalc(evt.touches);
+                if (ts > 0) {
+                    if (startScale > 0) {
+                        totalScale = ts / startScale;
+                    }
+                    if (prevScale > 0) {
+                        deltaScale = ts / prevScale;
+                    }
                 }
             }
+            finishJstap(evt);
         }
-        finishJstap(evt);
     }
 
     function detectPinchMove() {
@@ -413,6 +416,7 @@
                             anDroid = true;
                         }
                         addTouch(ev);
+                        activeTouch++;
                         if (callback) {
                             callback(ev, jstapTouches);
                         }
@@ -436,6 +440,7 @@
                         if (callback) {
                             callback(ev, jstapTouches);
                         }
+                        activeTouch--;
                         removeTouch(ev);
                     };
                     break;
@@ -507,7 +512,7 @@
         if (!anDroid && !ev.scale && ev.scale !== 0) {
             anDroid = true;
         }
-
+        activeTouch++;
         addTouch(ev);
     }
 
@@ -523,6 +528,7 @@
     function mTouchEnd(ev){
         endTime = new Date().getTime();
         detectEndEvents(ev);
+        activeTouch--;
         removeTouch(ev);
     }
 
