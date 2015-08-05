@@ -412,10 +412,6 @@
                         if (!anDroid && !ev.scale && ev.scale !== 0) {
                             anDroid = true;
                         }
-                        if (anDroid) {
-                            ev.preventDefault();
-                        }
-
                         addTouch(ev);
                         if (callback) {
                             callback(ev, jstapTouches);
@@ -436,8 +432,6 @@
                     break;
                 case 'end':
                     proxy = function (ev) {
-                        // ev.preventDefault(); // android appears to want this
-
                         endTime = new Date().getTime();
                         if (callback) {
                             callback(ev, jstapTouches);
