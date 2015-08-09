@@ -723,7 +723,10 @@
 
     var jstapBind = new JstapBinder(),
         JstapOptionHandler = {
-            'options': setOptions
+            'options': setOptions,
+            'touches': function (id) {
+                return jstapTouches.touch(id);
+            }
         };
 
     function launchJstap(jTargetElement) {
