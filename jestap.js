@@ -6,15 +6,22 @@
 
 /*jslint white: true, vars: true, sloppy: true, devel: true, plusplus: true, browser: true */
 
-
 /**
  * register to the document to catch all touch events.
  * trigger CustomEvent() for detected gestures
  */
-class jestap {
-  construct(opts) {
-    this.opts = {};
-    if (typeof opts === "object") {
+class Jestap {
+  constructor(opts = null) {
+    this.opts = {
+      tapDistance:    10,
+      tapTime:        100, // miliseconds
+      tapLongTime:    1000,// miliseconds
+      doubleTapTime:  400, // miliseconds
+      swipeDistance:  100,
+      flickTime:      100,
+      flickDistance:  50
+    };
+    if (typeof opts === "object" && opts !== null) {
       this.opts = opts;
     }
 
@@ -23,7 +30,7 @@ class jestap {
     document.addEventListener("touchend",    (e) => this.touchEnd(e));
     document.addEventListener("touchcancel", (e) => this.touchCancel(e));
     document.addEventListener("touchmove",   (e) => this.touchMove(e));
-  }
+}
 
   touchStart(event) {
     if (!this.android && !this.ios) {
@@ -31,8 +38,7 @@ class jestap {
       this.ios = (!this.android);
     }
 
-    if (!this.identifier.length) {
-      this.opts = {
+      this.evOpts = {
         'scale': 0.0,
         'bubbles': true,
         'cancelable': true
@@ -56,7 +62,6 @@ class jestap {
       this.deltaScale = 1.0;
       this.totalScale = 1.0;
       this.tapped = false;
-    }
 
     this.addTouch(event);
   }
@@ -68,9 +73,9 @@ class jestap {
 
     this.updateTouches(event);
 
-    this.opts.scale = this.deltaScale;
-    this.opts.touches = event.touches;
-    this.opts.count = this.identifier.length;
+    this.evOpts.details.scale = this.deltaScale;
+    this.evOpts.details.touches = event.touches;
+    this.evOpts.details.count = this.identifier.length;
     this.opts.targetTouches = event.targetTouches;
     this.opts.changedTouches = event.changedTouches;
 
@@ -88,9 +93,10 @@ class jestap {
   touchEnd(event) {
     let endTime = new Date().getTime();
 
-    this.opts.duration = endTime - this.startTime;
-    this.opts.scale = this.totalScale;
-    this.opts.count = this.identifier.length;
+    this.evOpts.details.duration = endTime - this.startTime;
+    this.evOpts.details.scale = this.totalScale;
+    this.evOpts.details.count = this.identifier.length;
+
     this.detectTap();
     this.detectSwipeOrFlick();
     this.detectPinchOrStretch();
@@ -106,6 +112,8 @@ class jestap {
 
   detectTap() {
     let ev = "tap";
+    let dt = this.evOpts.details.duration;
+
     if (Math.max(...this.xTouches.total) <= this.opts.tapDistance &&
         Math.max(...this.yTouches.total) <= this.opts.tapDistance) {
       if (dt >= this.opts.tapLongTime) {
@@ -119,7 +127,7 @@ class jestap {
   detectSwipeOrFlick() {
     if (Math.max(...this.xTouches.total) >= this.opts.flickDistance ||
         Math.max(...this.yTouches.total) >= this.opts.flickDistance) {
-          this.opts.distance = {
+          this.evOpts.details.distance = {
             "x": Math.max(...this.xTouches.total),
             "y": Math.max(...this.yTouches.total)
           };
@@ -134,16 +142,16 @@ class jestap {
 
   detectPinchOrStretch() {
     if (!this.tapped) {
-      if (this.opts.scale > 1.2) {
-        if (this.opts.count === 2) {
+      if (this.evOpts.details.scale > 1.2) {
+        if (this.evOpts.details.count === 2) {
           this.dispatchEvent(this.target, "stretch");
         }
         else {
           this.dispatchEvent(this.target, "spread");
         }
       }
-      else if (this.opts.scale < 0.8) {
-        if (this.opts.count === 2) {
+      else if (this.evOpts.details.scale < 0.8) {
+        if (this.evOpts.details..count === 2) {
           this.dispatchEvent(this.target, "pinch");
         }
         else {
@@ -202,6 +210,9 @@ class jestap {
         this.target = this.touches[0].target;
       }
     }
+    if (!this.identifier.length) {
+      this.target = null;
+    }
   }
 
   updateTouches(event) {
@@ -235,6 +246,9 @@ class jestap {
   }
 
   dispatchEvent(targetElement, eventType) {
-    targetElement.dispatchEvent(new CustomEvent(eventType, this.opts));
+    targetElement.dispatchEvent(new CustomEvent(eventType, this.evOpts));
   }
 }
+
+// get started without clogging the global namespace
+new Jestap();
