@@ -6,6 +6,11 @@
 
 /*jslint white: true, vars: true, sloppy: true, devel: true, plusplus: true, browser: true */
 
+// const jsConsole = document.getElementById("console");
+// function log(msg) {
+//   jsConsole.textContent += `${msg}\n`
+// }
+
 /**
  * register to the document to catch all touch events.
  * trigger CustomEvent() for detected gestures
@@ -25,6 +30,9 @@ class Jestap {
       this.opts = opts;
     }
 
+    this.lastTouchTime = 0;
+    this.lastTouchCount = 0;
+
     // register to document
     document.addEventListener("touchstart",  (e) => this.touchStart(e));
     document.addEventListener("touchend",    (e) => this.touchEnd(e));
@@ -33,13 +41,15 @@ class Jestap {
 }
 
   touchStart(event) {
-    if (!this.android && !this.ios) {
-      this.android = (!event.scale && event.scale !== 0);
-      this.ios = (!this.android);
-    }
+      if (!this.android && !this.ios) {
+        this.android = (!event.scale && event.scale !== 0);
+        this.ios = (!this.android);
+      }
 
       this.evOpts = {
-        'scale': 0.0,
+        detail: {
+          'scale': 0.0,
+        },
         'bubbles': true,
         'cancelable': true
       };
@@ -73,29 +83,33 @@ class Jestap {
 
     this.updateTouches(event);
 
-    this.evOpts.details.scale = this.deltaScale;
-    this.evOpts.details.touches = event.touches;
-    this.evOpts.details.count = this.identifier.length;
+    this.evOpts.detail.scale = this.deltaScale;
+    this.evOpts.detail.touches = event.touches;
+    this.evOpts.detail.count = this.identifier.length;
     this.opts.targetTouches = event.targetTouches;
     this.opts.changedTouches = event.changedTouches;
 
-    if (this.deltaScale > 1.0) {
-      this.dispatchEvent(this.target, "pinchwiden");
+    if (this.evOpts.detail.rotation) {
+        event.preventDefault();
+        document.getElementById('console').textContent += this.evOpts.detail.rotation + "\n";
+        this.dispatchEvent(this.target, "rotate");
+    }
+    else if (this.deltaScale > 1.0) {
+      this.dispatchEvent(this.target, "widen");
     }
     else if (this.deltaScale < 1.0) {
-      this.dispatchEvent(this.target, "pinchnarrow");
+      this.dispatchEvent(this.target, "narrow");
     }
-    else {
-      this.dispatchEvent(this.target, "move");
-    }
+
+    this.dispatchEvent(this.target, "move");
   }
 
   touchEnd(event) {
-    let endTime = new Date().getTime();
+    this.endTime = new Date().getTime();
 
-    this.evOpts.details.duration = endTime - this.startTime;
-    this.evOpts.details.scale = this.totalScale;
-    this.evOpts.details.count = this.identifier.length;
+    this.evOpts.detail.duration = this.endTime - this.startTime;
+    this.evOpts.detail.scale = this.totalScale;
+    this.evOpts.detail.count = this.identifier.length;
 
     this.detectTap();
     this.detectSwipeOrFlick();
@@ -112,27 +126,48 @@ class Jestap {
 
   detectTap() {
     let ev = "tap";
-    let dt = this.evOpts.details.duration;
+    let dt = this.evOpts.detail.duration;
 
     if (Math.max(...this.xTouches.total) <= this.opts.tapDistance &&
         Math.max(...this.yTouches.total) <= this.opts.tapDistance) {
+
+      let dtTap = this.endTime - this.lastTouchTime;
+      let dtLimit = this.opts.doubleTapTime;
+
       if (dt >= this.opts.tapLongTime) {
-        ev = "long" + ev;
+        ev = "press";
+        dtLimit += this.opts.tapLongTime;
       }
+
+      if (dtTap <= dtLimit) {
+        this.lastTouchCount += 1;
+      }
+      else {
+        this.lastTouchCount = 0;
+      }
+
+      // double or multi taps can be discovered by checking the repeat value.
+      this.evOpts.detail.repeat = this.lastTouchCount;
+      this.lastTouchEvent = ev;
+      this.lastTouchTime = this.endTime;
       this.tapped = true;
+
       this.dispatchEvent(this.target, ev);
     }
   }
 
   detectSwipeOrFlick() {
-    if (Math.max(...this.xTouches.total) >= this.opts.flickDistance ||
+    if (!this.tapped &&
+        Math.max(...this.xTouches.total) >= this.opts.flickDistance ||
         Math.max(...this.yTouches.total) >= this.opts.flickDistance) {
-          this.evOpts.details.distance = {
+          this.evOpts.detail.distance = {
             "x": Math.max(...this.xTouches.total),
             "y": Math.max(...this.yTouches.total)
           };
+          this.tapped = true;
           if (this.duration < this.opts.flickTime) {
             this.dispatchEvent(this.target, "flick");
+            this.dispatchEvent(this.target, "fling"); // google ...
           }
           else {
             this.dispatchEvent(this.target, "swipe");
@@ -142,21 +177,16 @@ class Jestap {
 
   detectPinchOrStretch() {
     if (!this.tapped) {
-      if (this.evOpts.details.scale > 1.2) {
-        if (this.evOpts.details.count === 2) {
-          this.dispatchEvent(this.target, "stretch");
-        }
-        else {
-          this.dispatchEvent(this.target, "spread");
-        }
+      let ev;
+      if (this.evOpts.detail.scale > 1.2) {
+        ev = this.evOpts.detail.count === 2 ? "stretch" : "spread";
       }
-      else if (this.evOpts.details.scale < 0.8) {
-        if (this.evOpts.details..count === 2) {
-          this.dispatchEvent(this.target, "pinch");
-        }
-        else {
-          this.dispatchEvent(this.target, "grab");
-        }
+      else if (this.evOpts.detail.scale < 0.8) {
+        ev = this.evOpts.detail.count === 2 ? "pinch" : "grab";
+      }
+      if (ev) {
+        this.tapped = true;
+        this.dispatchEvent(this.target, ev);
       }
     }
   }
@@ -181,7 +211,7 @@ class Jestap {
       }
     }
     if (!this.target) {
-      this.target = this.touches[0].target;
+      this.target = event.touches[0].target;
     }
   }
 
@@ -216,9 +246,12 @@ class Jestap {
   }
 
   updateTouches(event) {
-    let i, id;
+    let i, id, rx = [], ry = [];
+
     for (i = 0; i < event.touches.length; i++) {
       id = this.identifier.indexOf(event.touches[i].identifier);
+      rx[id] = this.xTouches.prev[id];
+      ry[id] = this.yTouches.prev[id];
       this.yTouches.total[id] = event.touches[i].screenY - this.yTouches.start[id];
       this.yTouches.delta[id] = event.touches[i].screenY - this.yTouches.prev[id];
       this.yTouches.prev[id]  = event.touches[i].screenY;
@@ -226,7 +259,34 @@ class Jestap {
       this.xTouches.delta[id] = event.touches[i].screenX - this.xTouches.prev[id];
       this.xTouches.prev[id]  = event.touches[i].screenX;
     }
+
     let a = this._area(this.xTouches.prev, this.yTouches.prev);
+
+    // ensure that no rotation is present if we are not in an rotation event
+    delete this.evOpts.detail.rotation;
+
+    if (event.touches.length === 2 &&
+        ((this.yTouches.delta[0] > 0 && this.yTouches.delta[1] <= 0) ||
+         (this.yTouches.delta[1] > 0 && this.yTouches.delta[0] <= 0) ||
+         (this.xTouches.delta[0] > 0 && this.xTouches.delta[1] <= 0) ||
+         (this.xTouches.delta[1] > 0 && this.xTouches.delta[0] <= 0))) {
+        // rotation detected
+        // calculate the angle
+        let p1 = {
+          x: Math.max(...rx) - Math.min(...rx),
+          y: Math.max(...ry) - Math.min(...ry)
+        };
+        let p2 = {
+          x: Math.max(...this.xTouches.prev) - Math.min(...this.xTouches.prev),
+          y: Math.max(...this.yTouches.prev) - Math.min(...this.yTouches.prev)
+        };
+
+        // check the direction
+        let t1 = Math.atan2(p1.y, p1.x) - Math.atan2(p1.y, p1.x);
+        let dir = t1 > 0 ? -1 : 1;
+        this.evOpts.detail.rotation = dir * Math.atan2(p1.y - p2.y, p1.x - p2.x);
+    }
+
     this.totalScale = a/this.startArea;
     this.deltaScale = a/this.prevArea;
     this.prevArea = a;
