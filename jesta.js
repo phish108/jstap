@@ -1,5 +1,5 @@
 /**
- * jestap
+ * jesta
  *
  * ES6 gesture detection
  */
@@ -15,8 +15,8 @@
  * register to the document to catch all touch events.
  * trigger CustomEvent() for detected gestures
  */
-class Jestap {
-  constructor(opts = null) {
+class Jesta {
+  constructor() {
     this.opts = {
       tapDistance:    10,
       tapTime:        100, // miliseconds
@@ -26,19 +26,37 @@ class Jestap {
       flickTime:      100,
       flickDistance:  50
     };
-    if (typeof opts === "object" && opts !== null) {
-      this.opts = opts;
-    }
 
     this.lastTouchTime = 0;
     this.lastTouchCount = 0;
 
     // register to document
-    document.addEventListener("touchstart",  (e) => this.touchStart(e));
-    document.addEventListener("touchend",    (e) => this.touchEnd(e));
-    document.addEventListener("touchcancel", (e) => this.touchCancel(e));
-    document.addEventListener("touchmove",   (e) => this.touchMove(e));
+    document.addEventListener("touchstart",  e => this.touchStart(e));
+    document.addEventListener("touchend",    e => this.touchEnd(e));
+    document.addEventListener("touchcancel", e => this.touchCancel(e));
+    document.addEventListener("touchmove",   e => this.touchMove(e));
+    document.addEventListener("jesta", e => this.changeOpts(e.detail));
 }
+
+/**
+ * in order to change the default values of Jesta, an app has to send the
+ * jesta event to the document using a CustomEvent. The option values are
+ * stored in the event's detail attribute.
+ *
+ * The defaults are:
+ * - tapDistance = 10 (px) maximum distance for getting regonised as a tap
+ * - tapTime = 100 (ms) maximum time for having the finger on the display
+ * - tapLongTime = 1000 (ms) Min Time for getting recognised as press.
+ * - doubleTapTime = 400 (ms) max time for repeated events.
+ * - swipeDistance = 100 (px) min distance of finger movement for swipe and flicks.
+ * - flickTime = 100 (ms) max time for flick events
+ * - flickDistance = 50 (px) min distance to move for flicks.
+ */
+  changeOpts(opts) {
+      if (typeof opts === "object") {
+          Object.keys(this.opts).map(o => this.opts[o] = parseInt(opts[o]) || this.opts[o]);
+      }
+  }
 
   touchStart(event) {
       if (!this.android && !this.ios) {
@@ -311,4 +329,4 @@ class Jestap {
 }
 
 // get started without clogging the global namespace
-new Jestap();
+new Jesta();
