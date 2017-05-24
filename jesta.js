@@ -211,6 +211,7 @@ class Jesta {
 
   addTouch(event) {
     let i;
+    // FIXME: for .. in loop
     for (i = 0; i < event.touches.length; i++) {
       if (this.identifier.indexOf(event.touches[i].identifier) < 0) {
         this.identifier.push(event.touches[i].identifier);
@@ -238,7 +239,7 @@ class Jesta {
     for (i = 0; i < event.touches.length; i++) {
       arr.push(event.touches[i]);
     }
-    id = this.identifier.findIndex((e) => (arr.indexOf(e) < 0));
+    id = this.identifier.findIndex(e => (arr.indexOf(e) < 0));
 
     if (id >= 0) {
       this.identifier = this.identifier.splice(id, 1);
@@ -266,6 +267,7 @@ class Jesta {
   updateTouches(event) {
     let i, id, rx = [], ry = [];
 
+    // FIXME: for .. in loop
     for (i = 0; i < event.touches.length; i++) {
       id = this.identifier.indexOf(event.touches[i].identifier);
       rx[id] = this.xTouches.prev[id];
