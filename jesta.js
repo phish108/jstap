@@ -35,7 +35,7 @@ class Jesta {
     document.addEventListener("touchend",    e => this.touchEnd(e));
     document.addEventListener("touchcancel", e => this.touchCancel(e));
     document.addEventListener("touchmove",   e => this.touchMove(e));
-    document.addEventListener("jesta", e => this.changeOpts(e.detail));
+    document.addEventListener("jesta",       e => this.changeOpts(e.detail));
 }
 
 /**
